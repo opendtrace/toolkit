@@ -1,4 +1,4 @@
-#!/usr/bin/perl
+#!/usr/bin/env perl
 #
 # errinfo - report on syscall failures and print errno error messages.
 #	    Written using Perl and DTrace (Solaris 10 03/05)
