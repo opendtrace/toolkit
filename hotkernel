@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 #
 # hotkernel - sample on-CPU kernel-level functions and modules.
 #             Written using Perl and DTrace (Solaris 10 03/05)

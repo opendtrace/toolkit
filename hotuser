@@ -1,4 +1,4 @@
-#!/usr/bin/perl -w
+#!/usr/bin/env perl
 #
 # hotuser - sample on-CPU user-level functions and libraries.
 #           Written using Perl and DTrace (Solaris 10 03/05)
