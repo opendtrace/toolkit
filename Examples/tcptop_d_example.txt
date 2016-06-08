@@ -1,0 +1,12 @@
+The following is a demonstration of the tcptop command,
+
+$ ./tcptop.d
+Sampling... Please wait.
+2014 May  1 13:27:28,  load: 0.02,  TCPin:      0 Kb,  TCPout:      0 Kb
+
+  ZONE    PID LADDR           LPORT RADDR           RPORT      SIZE
+       0    574 10.134.64.85       22 10.132.145.148  51590        68
+
+This script will capture and display top tcp network parkets by process.
+
+
