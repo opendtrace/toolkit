@@ -63,8 +63,7 @@
 #   times may be due to events that have been filtered away, for example
 #   another process that may be seeking the disk heads elsewhere.
 #
-# SEE ALSO: BigAdmin: DTrace, http://www.sun.com/bigadmin/content/dtrace
-#	    Solaris Dynamic Tracing Guide, http://docs.sun.com
+# SEE ALSO: Solaris Dynamic Tracing Guide, http://docs.oracle.com
 #	    DTrace Tools, http://www.brendangregg.com/dtrace.html
 #
 # COPYRIGHT: Copyright (c) 2005 Brendan Gregg.

@@ -10,19 +10,16 @@ Links - DTrace links
 	DTraceToolkit
 	DTrace Tools
 
-   http://www.sun.com/bigadmin/content/dtrace
-	DTrace site on BigAdmin
-
-   http://docs.sun.com/db/doc/817-6223
+   http://docs.oracle.com/cd/E23824_01/html/E22973
 	DTrace Guide (answerbook)
 
-   http://blogs.sun.com/roller/page/bmc
+   http://blogs.oracle.com/bmc
 	Bryan Cantrill's Blog (DTrace Team)
 
-   http://blogs.sun.com/roller/page/ahl
+   http://blogs.oracle.com/ahl
 	Adam Leventhal's Blog (DTrace Team)
 
-   http://blogs.sun.com/mws
+   http://blogs.oracle.com/mws
 	Mike Shapiro's Blog (DTrace Team)
 
    http://www.solarisinternals.com/si/dtrace/index.php

@@ -1,22 +1,25 @@
 The following is an example of connections. As inbound TCP connections are 
-established their details are printed out. This includes the UID, PID and
-CMD of the server process that is listening on that port,
+established their details are printed out. This includes the PID of the
+server process that is listening on that port,
 
-   # connections
-     UID   PID CMD          TYPE  PORT IP_SOURCE
-       0   242 inetd         tcp    79 192.168.1.1
-       0   359 sshd          tcp    22 192.168.1.1
-     100  1532 Xorg          tcp  6000 192.168.1.1
-   ^C
+ # ./connections
+ ZONE_ID     PID       IP_SOURCE    PORT
+       0  100504  10.132.145.148      22
+ ^C
 
+Here's an example with timestamp (string) and zone printout
+
+ # ./connections -vZ
+ TIMESTR              ZONE        ZONE_ID     PID       IP_SOURCE    PORT
+ 2014 Jul  1 15:01:16 global            0  100504  10.132.145.148      22
+ ^C
 
 In another window snoop was running for comparison,
 
-   # snoop 'tcp[13:1] = 0x02'
-   Using device /dev/rtls0 (promiscuous mode)
-           mars -> jupiter      FINGER C port=56760
-           mars -> jupiter      TCP D=22 S=56761 Syn Seq=3264782212 Len=0 ...
-           mars -> jupiter      XWIN C port=56763
+ # snoop 'tcp[13:1] = 0x02'
+ Using device net0 (promiscuous mode)
+ mars -> jupiter TCP D=22 S=50263 Syn Seq=372663324 Len=0 Win=8192 Options=<mss 1460,nop,wscale 2,nop,nop,sackOK>
+ ^C
 
 snoop can already tell me that these connections are happening - but does not
 print out details of the server that accepted the connection.

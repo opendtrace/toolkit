@@ -37,7 +37,7 @@ syscall::write:entry
 }
 
 syscall::read:entry
-/state == 2 && ppid == $pid && arg0 == 3/
+/state == 2 && ppid == $pid && arg0 == 0/
 {
 	self->inguess = 1;
 	self->buf = arg1;
@@ -53,7 +53,7 @@ syscall::read:return
 }
 
 syscall::read:return
-/self->inguess && keys[pos-1] == '\n'/
+/self->inguess && (keys[pos-1] == '\n' || keys[pos-1] == '\r')/
 {
 	pos -= 2;
 	fac = 1;
@@ -80,8 +80,8 @@ syscall::read:return
 	printf("Correct! That took %d guesses.\n\n", num);
 	self->doneguess = 0;
 	state = 3;
-	printf("Please enter your name: ");
-	system("/usr/bin/read name");
+	printf("\n Thank you for playing! \n");
+	exit(0);
 }
 
 syscall::read:return
@@ -97,22 +97,8 @@ syscall::read:return
 }
 
 syscall::read:entry
-/state == 3 && curthread->t_procp->p_parent->p_ppid == $pid && arg0 == 0/
+/state == 3 && curthread->t_procp->p_ppid == $pid && arg0 == 0/
 {
 	self->inname = 1;
 	self->buf = arg1;
-}
-
-/* Save high score */
-syscall::read:return
-/self->inname/
-{
-	self->inname = 0;
-	name = stringof(copyin(self->buf, arg0 - 1));
-	system("echo %s %d >> %s", name, num, scorefile);
-
-	/* Print high scores */
-	printf("\nPrevious high scores,\n");
-	system("cat %s", scorefile);
-	exit(0);
 }

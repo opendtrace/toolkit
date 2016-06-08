@@ -38,6 +38,9 @@
  * 20-Apr-2006	   "	  "	Last update.
  */
 
+/* how to we fetch this from the header file? */
+inline uint_t AT_FDCWD = 0xffd19553;
+
 #pragma D option quiet
 
 dtrace:::BEGIN
@@ -45,34 +48,30 @@ dtrace:::BEGIN
 	printf("Tracing... Hit Ctrl-C to end.\n");
 }
 
-syscall::open*:entry
+syscall::openat:entry,
+syscall::openat64:entry
 {
-	self->pathp = arg0;
+	self->dfd = (uint_t)arg0;
+	self->pathp = arg1;
 	self->ok = 1;
 }
 
-syscall::open*:return
+syscall::openat:return,
+syscall::openat64:return
 /self->ok && arg0 != -1/
 {
 	self->file = copyinstr(self->pathp);
-	self->char0 = copyin(self->pathp, 1);
-
-	/* fetch current working directory */
-	this->path = curthread->t_procp->p_user.u_cdir->v_path;
 
 	/*
 	 * Make the full pathname
 	 *
-	 * This routine takes the cwd and the filename, and generates a
-	 * full pathname. Sometimes the filename is absolute, so we must
-	 * ignore the cwd. This also checks if the cwd ends in an
-	 * unnecessary '/'.
+	 * This routine takes the base dir and the filename, and generates a
+	 * full pathname. If the filename is absolute, we ignore the base dir.
 	 */
-	this->len = strlen(this->path);
-	self->join = *(char *)(this->path + this->len - 1) == '/' ?  "" : "/";
-	self->dir = strjoin(cwd, self->join);
-	self->dir = *(char *)self->char0 == '/' ? "" : self->dir;
-	self->full = strjoin(self->dir, self->file);
+	self->dir  = *self->file == '/' ? "" :
+	    (self->dfd == AT_FDCWD ? cwd : fds[self->dfd].fi_pathname);
+	self->join = *self->file == '/' ? "" : "/";
+	self->full = strjoin(strjoin(self->dir, self->join), self->file);
 
 	/* save to aggregation */
 	@num[self->full] = count();
@@ -82,15 +81,16 @@ syscall::open*:return
 	self->full  = 0;
 	self->dir   = 0;
 	self->file  = 0;
-	self->char0 = 0;
 }
 
-syscall::open*:return
+syscall::openat:return,
+syscall::openat64:return
 /self->ok/
 {
 	/* cleanup */
-	self->ok    = 0;
+	self->ok = 0;
 	self->pathp = 0;
+	self->dfd = 0;
 }
 
 dtrace:::END

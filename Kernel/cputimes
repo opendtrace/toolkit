@@ -37,6 +37,8 @@
 # SEE ALSO: cpudists
 #           Heisenberg's uncertainty principle.
 #
+# Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+#
 # COPYRIGHT: Copyright (c) 2005 Brendan Gregg.
 #
 # CDDL HEADER START
@@ -58,7 +60,7 @@
 # 27-Apr-2005   Brendan Gregg   Created this.
 # 22-Sep-2005      "      "	Fixed a key corruption bug.
 # 22-Sep-2005      "      "	Last update.
-#
+# 16-Jan-2014	Melvin Gong	Replaced idle_enter with disp_idle_enter.
 
 
 ##############################
@@ -125,7 +127,7 @@ fi
  }
 
  /* Flag this thread as idle */
- sysinfo:unix:idle_enter:idlethread
+ sysinfo:::idlethread
  {
 	idle[cpu] = 1;
  }

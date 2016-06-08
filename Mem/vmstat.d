@@ -33,6 +33,8 @@
  *
  * SEE ALSO:	vmstat(1M)
  *
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ *
  * COPYRIGHT: Copyright (c) 2005 Brendan Gregg.
  *
  * CDDL HEADER START
@@ -51,6 +53,7 @@
  *
  * 11-Jun-2005  Brendan Gregg   Created this.
  * 08-Jan-2006	   "      "	Last update.
+ * 16-Jan-2014	Melvin Gong	Updated k_anoninfo changes.
  */
 
 #pragma D option quiet
@@ -103,15 +106,15 @@ profile:::tick-1sec
 	this->free = `freemem;
 
 	/*
-	 * fetch free swap
+	 * fetch free swap (CURRENT_TOTAL_AVAILABLE_SWAP)
 	 *
 	 * free swap is described in /usr/include/vm/anon.h as,
-	 * MAX(ani_max - ani_resv, 0) + (availrmem - swapfs_minfree)
+	 * (k_anoninfo.ani_phys_avail + Asleep_availrmem + \
+	 * MAX((spgcnt_t)(availrmem - swapfs_minfree), 0)
 	 */
-	this->ani_max = `k_anoninfo.ani_max;
-	this->ani_resv = `k_anoninfo.ani_phys_resv + `k_anoninfo.ani_mem_resv;
-	this->swap = (this->ani_max - this->ani_resv > 0 ?
-	    this->ani_max - this->ani_resv : 0) + `availrmem - `swapfs_minfree;
+	this->ani_phys_avail = `k_anoninfo.ani_phys_avail;
+	this->swap = (`availrmem - `swapfs_minfree > 0 ?
+	    `availrmem - `swapfs_minfree : 0) + this->ani_phys_avail + `Asleep_availrmem;
 
 	/* fetch w */
 	this->w = `nswapped;

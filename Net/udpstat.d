@@ -17,7 +17,7 @@
  *
  * The above UDP statistics are documented in the mib2_udp struct
  * in the /usr/include/inet/mib2.h file; and also in the mib provider
- * chapter of the DTrace Guide, http://docs.sun.com/db/doc/817-6223.
+ * chapter of the DTrace Guide, http://docs.oracle.com/cd/E23824_01/html/E22973.
  *
  * COPYRIGHT: Copyright (c) 2005 Brendan Gregg.
  *
@@ -37,6 +37,7 @@
  *
  * 25-Jul-2005  Brendan Gregg   Created this.
  * 25-Jul-2005	   "      "	Last update.
+ * 29-Apr-2014  Melvin Gong	Minor update on udp probe names.
  */
 
 #pragma D option quiet
@@ -71,9 +72,9 @@ profile:::tick-1sec
 mib:::udp*InDatagrams	{ UDP_in += arg0;	}
 mib:::udp*OutDatagrams	{ UDP_out += arg0;	}
 mib:::udpInErrors	{ UDP_inErr += arg0;	}
-mib:::udpInCksumErrs	{ UDP_inErr += arg0;	}
+mib:::udp*InCksumErrs	{ UDP_inErr += arg0;	}
 mib:::udpOutErrors	{ UDP_outErr += arg0;	}
-mib:::udpNoPorts	{ UDP_noPort += arg0;	}
+mib:::udp*NoPorts	{ UDP_noPort += arg0;	}
 
 /*
  * Print Output

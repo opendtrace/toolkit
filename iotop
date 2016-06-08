@@ -61,8 +61,7 @@
 #   mean 2 disks are busy at 100%, or 4 disks at 50%...
 #
 # SEE ALSO: iosnoop
-#	    BigAdmin: DTrace, http://www.sun.com/bigadmin/content/dtrace
-#	    Solaris Dynamic Tracing Guide, http://docs.sun.com
+#	    Solaris Dynamic Tracing Guide, http://docs.oracle.com
 #	    DTrace Tools, http://www.brendangregg.com/dtrace.html
 #
 # INSPIRATION:  top(1) by William LeFebvre

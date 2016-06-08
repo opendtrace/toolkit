@@ -23,6 +23,8 @@
  *
  * IDEA: Ryan Matteson (who first wrote a solution to this).
  *
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ *
  * COPYRIGHT: Copyright (c) 2005 Brendan Gregg.
  *
  * CDDL HEADER START
@@ -83,11 +85,11 @@ profile:::tick-1sec
 syscall::accept:return
 /execname == "httpd"/
 {
-	self->buf = 1;
+	num++;
 }
 
 syscall::read:entry
-/self->buf/
+/execname == "httpd"/
 {
 	self->buf = arg1;
 }
@@ -98,13 +100,12 @@ syscall::read:entry
 syscall::read:return
 /self->buf && arg0/
 {
-	this->str = (char *)copyin(self->buf, arg0);
+	this->str = (char *)copyin(self->buf, 5);
 	this->str[4] = '\0';
 	get  += stringof(this->str) == "GET " ? 1 : 0;
 	post += stringof(this->str) == "POST" ? 1 : 0;
 	head += stringof(this->str) == "HEAD" ? 1 : 0;
 	trac += stringof(this->str) == "TRAC" ? 1 : 0;
-	num++;
 	self->buf = 0;
 }
 

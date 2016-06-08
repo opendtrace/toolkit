@@ -3,9 +3,8 @@
 connections \- print inbound TCP connections by process. Uses DTrace.
 .SH SYNOPSIS
 .B connections
-[\-htvZ]
 .SH DESCRIPTION
-This displays the PID and command name of the processes accepting
+This displays the PID of the processes accepting
 connections, along with the source IP address and destination port number
 
 Since this uses DTrace, only the root user or users with the
@@ -13,9 +12,7 @@ dtrace_kernel privilege can run this command.
 .SH OS
 Solaris
 .SH STABILITY
-unstable - this script uses fbt provider probes which may change for
-future updates of the OS, invalidating this script. Please read
-Docs/Notes/ALLfbt_notes.txt for further details about these fbt scripts.
+stable - this script uses tcp provider probes, which are stable.
 .SH OPTIONS
 .TP
 \-t
@@ -32,34 +29,25 @@ print zonename
 snoop inbound connections
 # 
 .B connections
-.TP
-snoop connections with time
-#
-.B connections
-\-v
-.PP
 .SH FIELDS
 .TP
-UID
-user ID of the server
+ZONE_ID
+zone ID
 .TP
 PID
 process ID of the server
 .TP
-CMD
-server command name
+IP_SOURCE
+source IP of the client
+.TP
+PORT
+server port
 .TP
 TIME
 timestamp, us
 .TP
 TIMESTR
 timestamp, string
-.TP
-PORT
-server port
-.TP
-IP_SOURCE
-source IP of the client, written in IPv4 style
 .TP
 ZONE
 zonename

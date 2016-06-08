@@ -14,7 +14,7 @@
  *
  * The virtual memory statistics are documented in the cpu_vminfo struct
  * in the /usr/include/sys/sysinfo.h file; and also in the vminfo provider
- * chapter of the DTrace Guide, http://docs.sun.com/db/doc/817-6223.
+ * chapter of the DTrace Guide, http://docs.oracle.com/cd/E23824_01/html/E22973.
  *
  * COPYRIGHT: Copyright (c) 2005 Brendan Gregg.
  *

@@ -30,7 +30,7 @@
  *
  * BASED ON: /usr/demo/dtrace/pri.d
  *
- * SEE ALSO: DTrace Guide "profile Provider" chapter (docs.sun.com)
+ * SEE ALSO: DTrace Guide "profile Provider" chapter (docs.oracle.com)
  *           dispadmin(1M)
  *
  * PORTIONS: Copyright (c) 2006 Brendan Gregg.
