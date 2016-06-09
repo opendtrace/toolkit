@@ -106,7 +106,10 @@ print "Sampling... Hit Ctrl-C to end.\n";
 while (my $line = <DTRACE>) {
     next if $line =~ /^\s*$/;
     next if $line !~ /^OUT: /;
-    my ($tag, $addr, $count) = split ' ', $line;
+    $line =~ /([^ ]+) (.*) ([^ ]+)/;
+    my $tag = $1;
+    my $addr = $2;
+    my $count = $3;
     my ($name, $offset) = split /\+/, $addr;
     next if $name eq "0x0";
     $name =~ s/\`.*// if $libs;
