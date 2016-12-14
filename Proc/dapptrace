@@ -1,39 +1,10 @@
-#!/usr/bin/sh
+#!/usr/bin/env sh
 #
 # dapptrace - trace user and library function usage.
 #             Written using DTrace (Solaris 10 3/05).
 #
 # The default output traces user functions as they are called. Options
 #  can be used to examine libraries and timestamps.
-#
-# $Id: dapptrace 65 2007-10-04 11:09:40Z brendan $
-#
-# USAGE: dapptrace [-acdeFlhoU] [-u lib] { -p PID | command }
-#
-#          -p PID          # examine this PID
-#          -a              # print all details
-#          -c              # print call counts
-#          -d              # print relative timestamps (us)
-#          -e              # print elapsed times (us)
-#          -F              # print flow indentation
-#          -l              # print pid/lwpid per line
-#          -o              # print on cpu times (us)
-#          -u lib          # trace this library instead
-#          -U              # trace all libraries + user functions
-#          -b bufsize      # dynamic variable buf size (default is "4m")
-#  eg,
-#       dapptrace df -h       # run and examine the "df -h" command
-#       dapptrace -p 1871     # examine PID 1871
-#       dapptrace -Fp 1871    # print using flow indents
-#       dapptrace -eop 1871   # print elapsed and CPU times
-#
-# The elapsed times are interesting, to help identify calls that take
-#  some time to complete (during which the process may have context
-#  switched off the CPU). 
-#
-# SEE ALSO: dappprof       # DTraceToolkit
-#           dtruss         # DTraceToolkit
-#           apptrace
 #
 # COPYRIGHT: Copyright (c) 2005 Brendan Gregg.
 #
@@ -55,6 +26,8 @@
 #
 # 16-May-2005   Brendan Gregg   Created this.
 # 17-Jul-2005	   "      "	Last update.
+#    Aug-2016	Horacio Mijail Anton Quiles - bugfixes and improvements
+#
 #
 
 
