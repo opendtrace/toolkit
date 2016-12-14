@@ -37,39 +37,54 @@
 
 ### Default variables
 opt_pid=0; pid=0; opt_indent=0; opt_lib=0; lib=""
-opt_elapsed=0; opt_cpu=0; opt_counts=0; 
-opt_relative=0; opt_printid=0; opt_liball=0
+opt_elapsed=0; opt_oncpu=0; opt_counts=0;
+opt_threadtstamp=0; opt_printid=0; opt_liball=0
 opt_command=0; command=""; opt_buf=0; buf="4m"
+opt_globaltstamp=0; opt_shortid=0; opt_maxdepth=0;
+maxdepth=1000; opt_libstop=0; opt_missret=0
+opt_num=0
 
 ### Process options
-while getopts ab:cdeFhlop:u:U name
+while getopts ab:cdeFghilnop:rst:u:U name
 do
-        case $name in
-        a)      opt_liball=1; opt_counts=1; opt_relative=1; opt_elapsed=1
-		opt_indent=1; opt_printid=1; opt_cpu=1 ;; 
+	case $name in
+	a)	opt_liball=1; opt_counts=1; opt_threadtstamp=1; opt_elapsed=1
+		opt_indent=1; opt_printid=1; opt_oncpu=1 ;;
 	b)	opt_buf=1; buf=$OPTARG ;;
-        p)      opt_pid=1; pid=$OPTARG ;;
-        u)      opt_lib=1; lib=$OPTARG ;;
-        U)      opt_liball=1 ;; 
+	p)	opt_pid=1; pid=$OPTARG ;;
+	u)	opt_lib=1; lib=$OPTARG ;;
+	U)	opt_liball=1 ;;
 	c)	opt_counts=1 ;;
-	d)	opt_relative=1 ;;
+	d)	opt_threadtstamp=1 ;;
 	e)	opt_elapsed=1 ;;
 	F)	opt_indent=1 ;;
+	g)	opt_globaltstamp=1 ;;
+	i)	opt_libstop=1 ;;
 	l)	opt_printid=1 ;;
-	o)	opt_cpu=1 ;;
+	n)	opt_num=1 ;;
+	o)	opt_oncpu=1 ;;
+	r)	opt_missret=1 ;;
+	s)	opt_shortid=1 ;;
+	t)	opt_maxdepth=1; maxdepth=$OPTARG ;;
         h|?)    cat <<-END >&2
-		USAGE: dapptrace [-acdeholFLU] [-u lib] { -p PID | command }
+		USAGE: dapptrace [-acdegholsFLU] [-u lib] { -p PID | command }
 
 		          -p PID          # examine this PID
 		          -a              # print all details
 		          -c              # print syscall counts
-		          -d              # print relative times (us)
+		          -d              # print thread-local timestamps (us)
+		          -g              # print global timestamps (us)
 		          -e              # print elapsed times (us)
 		          -F              # print flow indentation
 		          -l              # print pid/lwpid
-		          -o              # print CPU on cpu times
+		          -n              # print stack depth as a number
+		          -o              # print on-cpu times
+		          -r              # show missing function returns
+		          -s              # print a shortened lwp id
+		          -t depth        # stop tracing at this depth
 		          -u lib          # trace this library instead
 		          -U              # trace all libraries + user funcs
+		          -i              # like -U, but stop tracing at the first lib level
 		          -b bufsize      # dynamic variable buf size
 		   eg,
 		       dapptrace df -h       # run and examine "df -h"
@@ -78,7 +93,7 @@ do
 		       dapptrace -eop 1871   # print elapsed and CPU times
 		END
 		exit 1
-        esac
+	esac
 done
 shift `expr $OPTIND - 1`
 
@@ -93,15 +108,15 @@ if [ $opt_pid -eq 0 ]; then
 fi
 
 ### Probe logic
-if [ $opt_liball -eq 1 ]; then
+if [ $opt_liball -eq 1 -o $opt_libstop -eq 1 ]; then
 	probe_entry='pid$target:::entry'
 	probe_return='pid$target:::return'
 elif [ $opt_lib -eq 1 ]; then
 	probe_entry='pid$target:'$lib'::entry'
 	probe_return='pid$target:'$lib'::return'
 else
- 	probe_entry='pid$target:a.out::entry'
- 	probe_return='pid$target:a.out::return'
+	probe_entry='pid$target:a.out::entry'
+	probe_return='pid$target:a.out::return'
 fi
 
 #################################
@@ -111,106 +126,265 @@ fi
 ### Define D Script
 dtrace='
  #pragma D option quiet
+ #pragma D option switchrate=1001hz
+ #pragma D option cleanrate=101hz
 
  /*
   * Command line arguments
   */
- inline int OPT_command   = '$opt_command';
- inline int OPT_liball    = '$opt_liball';
- inline int OPT_indent    = '$opt_indent';
- inline int OPT_printid   = '$opt_printid';
- inline int OPT_relative  = '$opt_relative';
- inline int OPT_elapsed   = '$opt_elapsed';
- inline int OPT_cpu       = '$opt_cpu';
- inline int OPT_counts    = '$opt_counts';
- inline int OPT_pid       = '$opt_pid';
- inline int PID           = '$pid';
- inline string NAME       = "'$pname'";
+ inline int OPT_command		= '$opt_command';
+ inline int OPT_liball		= '$opt_liball';
+ inline int OPT_indent		= '$opt_indent';
+ inline int OPT_printid		= '$opt_printid';
+ inline int OPT_threadtstamp	= '$opt_threadtstamp';
+ inline int OPT_globaltstamp	= '$opt_globaltstamp';
+ inline int OPT_elapsed		= '$opt_elapsed';
+ inline int OPT_oncpu		= '$opt_oncpu';
+ inline int OPT_counts		= '$opt_counts';
+ inline int OPT_pid		= '$opt_pid';
+ inline int OPT_shortid		= '$opt_shortid';
+ inline int OPT_maxdepth	= '$opt_maxdepth';
+ inline int OPT_libstop		= '$opt_libstop';
+ inline int OPT_missret		= '$opt_missret';
+ inline int OPT_num		= '$opt_num';
 
- dtrace:::BEGIN 
+ inline int PID           	= '$pid'; /*unnecessary*/
+ inline string NAME       	= "'$pname'";  /*unused*/
+ inline int MAXDEPTH      	= '$maxdepth';
+ inline int INFDEPTH      	= 10000;	/* a depth value that will not be reached */
+ inline int DEBUG		= 0;		/* set to 1 for some debugging info */
+
+ dtrace:::ERROR
+ {
+ 	printf("ERROR:%X-%X-%X-%X-%X", arg1, arg2, arg3, arg4, arg5);
+ }
+
+ dtrace:::BEGIN
  {
 	/* print header */
-	OPT_printid  ? printf("%-8s  ","PID/LWP") : 1;
-	OPT_relative ? printf("%8s ","RELATIVE") : 1;
+	OPT_printid  ? printf("%-8s  ","PID/THRD") : 1;
+	OPT_shortid  ? printf("%3s  ","LWP") : 1;
+	OPT_globaltstamp ? printf("%8s ","G_TSTAMP") : 1;
+	OPT_threadtstamp ? printf("%8s ","T_TSTAMP") : 1;
 	OPT_elapsed  ? printf("%7s ","ELAPSD") : 1;
-	OPT_cpu      ? printf("%6s ","CPU") : 1;
-	printf("CALL(args) \t\t = return\n");
+	OPT_oncpu      ? printf("%6s ","CPU") : 1;
+	printf("CALL(args) \t\t = return val\n");
 
 	/* indent depth */
 	depth = 0;
+
+	thread_global_idx = 0;
+	global_t0 = timestamp;
+ }
+
+
+ /*
+  * Assign per-thread vars
+  */
+ proc:::lwp-start
+ /OPT_shortid && pid == $target/
+ {
+	self->tid = ++thread_global_idx;
+	self->active = 0;
+	self->last_depth[probefunc] = 0;
+	/*self->func_at_depth[0]="";*/
+	self->last_user_depth = INFDEPTH;
  }
 
  /*
-  * Save syscall entry info
+  * Save func entry info
   */
- '$probe_entry'
+ /* We only want tracing shallower than the requested stack depth */
+
+ /* check whether tracing should be stopped */
+ pid$target:::entry
+ / self->active
+ 	&& ( ustackdepth > MAXDEPTH
+		|| ( OPT_libstop && (ustackdepth > self->last_user_depth + 1) )
+	)
+ /
  {
-	/* set function depth */
-	this->fdepth = ++fdepth[probefunc];
-	depth += 2;
+ 	/* stop tracing and record where we stopped */
+	self->active = 0;
+	self->waited_module = probemod;
+	self->waited_func   = probefunc;
+
+	/* print an ellipsis to signify the missing trace */
+	OPT_printid      ? printf("%5s   %8s:  ", "", "") : 1;
+	OPT_shortid      ? printf("%3d%3d", self->tid, cpu) : 1;
+	OPT_globaltstamp ? printf("%8s ", "") : 1;
+	OPT_threadtstamp ? printf("%8s ", "") : 1;
+	OPT_elapsed      ? printf("        ") : 1;
+	OPT_oncpu        ? printf("       ") : 1;
+	OPT_indent       ? printf("%*s", ustackdepth*2,"") : 1;
+	printf("    ...\n");
+ }
+
+
+ /* enable tracing when the stack is shallow and
+	we are in an interesting func */
+ pid$target:::entry
+ / self->active == 0
+	&& ( ustackdepth <= MAXDEPTH
+		&& ( probemod == execname
+			|| OPT_liball
+			|| (OPT_libstop && ustackdepth == self->last_user_depth + 1) )
+	)
+ /
+ {
+	self->active = 1;
+ }
+
+ /* debugging last_user_depth*/
+ pid$target:::entry
+ / DEBUG && (OPT_libstop && ustackdepth >= self->last_user_depth)
+ /
+ {
+	printf("%s @ depth %d, LUD %d\n", probefunc, ustackdepth, self->last_user_depth);
+ }
+
+
+ /* defensive: this probefunc:entry was already registered at another depth.
+	Either we are recursing, or there was no corresponding probefunc:return.
+	Cleanup might be needed. */
+ '$probe_entry'
+ / self->active && self->last_depth[probefunc] != 0 /
+ {
+	this->ld = self->last_depth[probefunc];
+	/*OPT_shortid  ? printf("%3d%3d ", self->tid, cpu) : 1;*/
+	OPT_missret  ? printf("Missed return from %s at depth %d\n", probefunc, this->ld) : 1;
+
+	/* clear the timers in the stale register */
+	OPT_elapsed   ? self->start[probefunc, this->ld] = 0 : 1;
+	OPT_oncpu     ? self->vstart[probefunc, this->ld] = 0 : 1;
+
+	/* self->{func_at_depth, last_depth} will be set by the next action */
+
+ }
+
+
+ '$probe_entry'
+ / self->active /
+ {
+	/* get current depth */
+	this->depth = ustackdepth;
+
+	/* record the func and depth */
+	self->func_at_depth[this->depth] = probefunc;
+	self->last_depth[probefunc] = this->depth;
 
 	/* set start details */
-	self->start[probefunc,this->fdepth] = timestamp;
-	self->vstart[probefunc,this->fdepth] = vtimestamp;
+	OPT_elapsed   ? self->start[probefunc,this->depth]  = timestamp : 0;
+	OPT_oncpu     ? self->vstart[probefunc,this->depth] = vtimestamp : 0;
 
-	/* count occurances */
+	/* count occurrences */
 	OPT_counts && OPT_liball ? @Counts[probemod,probefunc] = count() : 1;
 	OPT_counts && ! OPT_liball ? @Counts[probefunc] = count() : 1;
 
 	/* print optional fields */
-	OPT_printid  ? printf("%5d/%d:  ",pid,tid) : 1;
-	OPT_relative ? printf("%8d ",vtimestamp/1000) : 1;
-	OPT_elapsed  ? printf("      . ") : 1;
-	OPT_cpu      ? printf("     . ") : 1;
-	OPT_indent   ? printf("%*s",depth,"") : 1;
+	OPT_printid      ? printf("%5d/0x%x:  ", pid,tid) : 1;
+	OPT_shortid      ? printf("%3d%3d", self->tid, cpu) : 1;
+	OPT_globaltstamp ? printf("%8d ", ((timestamp-global_t0)/1000) % 1000000) : 1;
+	OPT_threadtstamp ? printf("%8d ", vtimestamp/1000) : 1;
+	OPT_elapsed      ? printf("      . ") : 1;
+	OPT_oncpu        ? printf("     . ") : 1;
+	OPT_indent       ? printf("%*s", this->depth*2, "") : 1;
 
 	/* print main data */
 	printf("-> ");
-	OPT_liball ? printf("%s:",probemod) : 1;
-	printf("%s(0x%X, 0x%X, 0x%X)\t\t\n",probefunc,arg0,arg1,arg2);
+	OPT_num		 ? printf("%d ", this->depth) : 1;
+	printf("%s(0x%X, 0x%X, 0x%X)", probefunc, arg0, arg1, arg2);
+	OPT_liball || OPT_libstop ? printf("\t%s%s",(probemod != execname)? "@ " : "",(probemod != execname)? probemod : "") : 1;
+	printf("\n");
 
+	/* if we find ourselves in a library, we have to assume that the previous depth was the last user func depth */
+	OPT_libstop ? self->last_user_depth = (probemod == execname ? ustackdepth : ustackdepth-1 ): 1;
  }
+
+ /* debugging last_user_depth*/
+ '$probe_entry'
+ / DEBUG && self->active /
+ {
+	printf("entry: last_user_depth=%d, current = %d\n", self->last_user_depth, ustackdepth);
+ }
+
 
  /*
   * Print return data
   */
- /* print 3 arg output - default */
- '$probe_return'
- /self->start[probefunc,fdepth[probefunc]]/
+
+ /* check whether tracing should be activated */
+ pid$target:::return
+ / self->active == 0 
+	&& ustackdepth <= MAXDEPTH
+	&& ( probemod == execname
+		|| OPT_liball
+		|| ( OPT_libstop && ustackdepth == self->last_user_depth+1)
+	)
+ /
  {
-	/* fetch function depth */
-	this->fdepth = fdepth[probefunc];
+	self->active = 1;
+ }
+
+ /* defensive: is the previous stack level cleared?
+	if not (because of a missing :return perhaps), clear it */
+ '$probe_return'
+ / self->func_at_depth[ustackdepth+1] != 0/
+ {
+	this->f = self->func_at_depth[ustackdepth+1];
+	self->func_at_depth[ustackdepth+1] = 0;
+	this->d = self->last_depth[this->f];
+	self->last_depth[this->f] = 0;
+	self->start[this->f,this->d] = 0;
+	self->vstart[this->f,this->d] = 0;
+
+	/*OPT_shortid  ? printf("%3d%3d ", self->tid, cpu) : 1;*/
+	OPT_missret  ? printf("Missed return from %s at depth %d\n", this->f, this->d) : 1;
+ }
+
+ '$probe_return'
+  / self->active /
+ {
+	/* get function depth */
+	this->depth = ustackdepth;
 
 	/* calculate elapsed time */
-	this->elapsed = timestamp - self->start[probefunc,this->fdepth];
-	self->start[probefunc,this->fdepth] = 0;
-	this->cpu = vtimestamp - self->vstart[probefunc,this->fdepth];
-	self->vstart[probefunc,this->fdepth] = 0;
+	this->elapsed = timestamp - self->start[probefunc,this->depth];
+	self->start[probefunc,this->depth] = 0;
+	this->cpu = vtimestamp - self->vstart[probefunc,this->depth];
+	self->vstart[probefunc,this->depth] = 0;
 
 	/* print optional fields */
-	OPT_printid  ? printf("%5d/%d:  ",pid,tid) : 1;
-	OPT_relative ? printf("%8d ",vtimestamp/1000) : 1;
-	OPT_elapsed  ? printf("%7d ",this->elapsed/1000) : 1;
-	OPT_cpu      ? printf("%6d ",this->cpu/1000) : 1;
-	OPT_indent   ? printf("%*s",depth,"") : 1;
+	OPT_printid      ? printf("%5d/0x%x:  ", pid,tid) : 1;
+	OPT_shortid      ? printf("%3d%3d", self->tid, cpu) : 1;
+	OPT_globaltstamp ? printf("%8d ", ((timestamp-global_t0)/1000) % 1000000) : 1;
+	OPT_threadtstamp ? printf("%8d ", vtimestamp/1000) : 1;
+	OPT_elapsed      ? printf("%7d ", this->elapsed/1000) : 1;
+	OPT_oncpu        ? printf("%6d ", this->cpu/1000) : 1;
+	OPT_indent       ? printf("%*s", this->depth*2, "") : 1;
 
 	/* print main data */
 	printf("<- ");
-	OPT_liball ? printf("%s:",probemod) : 1;
-	printf("%s = %d\n",probefunc,(int)arg0);
-	depth -= 2;
-	fdepth[probefunc]--;
+	OPT_num		 ? printf("%d ", this->depth) : 1;
+	printf("%s = 0x%X\t[0x%x]",probefunc,(int)arg1, arg0);
+	OPT_liball || OPT_libstop ? printf("\t\t%s%s",(probemod != execname)? "@ " : "",(probemod != execname)? probemod : "") : 1;
+	printf("\n");
+
+	self->last_depth[probefunc] = 0;
+	self->func_at_depth[this->depth] = 0;
+
+	/* on a return, we do not know whether we are going back to a user or 
+	   lib depth (could be a return from a callback from lib to user!) so we 
+	   leave that to the entry probe*/
+	/* OPT_libstop ? ( probemod == execname ? self->last_user_depth = ustackdepth-1 : 1 ): 1
+	*/
  }
 
- /* reset indent depth */
- profile:::tick-1sec
+ /* debugging last_user_depth */
+ '$probe_return'
+ / DEBUG && self->active /
  {
-	/* 
-	 * some probes generated by the pid provider have entries
- 	 * but not returns. this is a klude to fix that problem. this
-	 * also explains fdepth[probefunc] rather than a single depth.
-	 */
-	depth = 0;
+	printf("return: last_user_depth=%d, current = %d\n", self->last_user_depth, ustackdepth);
  }
 
  /* print counts */
@@ -224,8 +398,8 @@ dtrace='
 
 ### Run DTrace
 if [ $opt_command -eq 1 ]; then
-	/usr/sbin/dtrace -x dynvarsize=$buf -x evaltime=exec -n "$dtrace" \
-	    -c "$command" >&2
+	/usr/sbin/dtrace -x dynvarsize=$buf -n "$dtrace" \
+	    -c "$command" #>&2  -x evaltime=exec -Z
 else
 	/usr/sbin/dtrace -x dynvarsize=$buf -n "$dtrace" -p "$pid" >&2
 fi
