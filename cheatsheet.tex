@@ -1,0 +1,214 @@
+\documentclass[10pt,landscape]{article}
+\usepackage{multicol}
+\usepackage{calc}
+\usepackage{ifthen}
+\usepackage[landscape]{geometry}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage[default]{sourcecodepro}
+\usepackage[T1]{fontenc}
+
+% To make this come out properly in landscape mode, do one of the following
+% 1.
+%  pdflatex latexsheet.tex
+%
+% 2.
+%  latex latexsheet.tex
+%  dvips -P pdf  -t landscape latexsheet.dvi
+%  ps2pdf latexsheet.ps
+
+
+% If you're reading this, be prepared for confusion.  Making this was
+% a learning experience for me, and it shows.  Much of the placement
+% was hacked in; if you make it better, let me know...
+
+
+% 2008-04
+% Changed page margin code to use the geometry package. Also added code for
+% conditional page margins, depending on paper size. Thanks to Uwe Ziegenhagen
+% for the suggestions.
+
+% 2006-08
+% Made changes based on suggestions from Gene Cooperman. <gene at ccs.neu.edu>
+
+
+% To Do:
+% \listoffigures \listoftables
+% \setcounter{secnumdepth}{0}
+
+
+% This sets page margins to .5 inch if using letter paper, and to 1cm
+% if using A4 paper. (This probably isn't strictly necessary.)
+% If using another size paper, use default 1cm margins.
+\ifthenelse{\lengthtest { \paperwidth = 11in}}
+	{ \geometry{top=.5in,left=.5in,right=.5in,bottom=.5in} }
+	{\ifthenelse{ \lengthtest{ \paperwidth = 297mm}}
+		{\geometry{top=1cm,left=1cm,right=1cm,bottom=1cm} }
+		{\geometry{top=1cm,left=1cm,right=1cm,bottom=1cm} }
+	}
+
+% Turn off header and footer
+\pagestyle{empty}
+ 
+
+% Redefine section commands to use less space
+\makeatletter
+\renewcommand{\section}{\@startsection{section}{1}{0mm}%
+                                {-1ex plus -.5ex minus -.2ex}%
+                                {0.5ex plus .2ex}%x
+                                {\normalfont\large\bfseries}}
+\renewcommand{\subsection}{\@startsection{subsection}{2}{0mm}%
+                                {-1explus -.5ex minus -.2ex}%
+                                {0.5ex plus .2ex}%
+                                {\normalfont\normalsize\bfseries}}
+\renewcommand{\subsubsection}{\@startsection{subsubsection}{3}{0mm}%
+                                {-1ex plus -.5ex minus -.2ex}%
+                                {1ex plus .2ex}%
+                                {\normalfont\small\bfseries}}
+\makeatother
+
+% Define BibTeX command
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+
+% Don't print section numbers
+\setcounter{secnumdepth}{0}
+
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{0pt plus 0.5ex}
+
+
+% -----------------------------------------------------------------------
+
+\begin{document}
+
+\raggedright
+\footnotesize
+\begin{multicols}{2}
+
+
+% multicol parameters
+% These lengths are set only within the two main columns
+%\setlength{\columnseprule}{0.25pt}
+\setlength{\premulticols}{1pt}
+\setlength{\postmulticols}{1pt}
+\setlength{\multicolsep}{1pt}
+\setlength{\columnsep}{2pt}
+
+\begin{center}
+     \Large{\textbf{DTrace Cheat Sheet}} \\
+\small{\verb|dtrace -n 'probe /predicate/ { action; }'|}
+\end{center}
+
+\section{FINDING PROBES}
+\begin{tabular}{@{}ll@{}}
+  \verb+dtrace -l | grep foo+ & keyword search\\
+  \verb|dtrace -n 'fbt:::entry { @[probefunc] = count(); }'| & frequency count \\
+\end{tabular}
+
+
+\section{PROBE ARGUMENTS}
+\begin{tabular}{@{}ll@{}}
+\verb|syscall:::| & \verb|man syscallname|\\
+\verb|fbt:::| & Kernel functions
+\end{tabular}
+
+\section{PROBES}
+\begin{tabular}{@{}ll@{}}
+\verb|BEGIN| & D program start\\
+\verb|END| & D program end\\
+\verb|tick-1sec| & run once per sec, one CPU only\\
+\verb|syscall::read*:entry| & process reads\\
+\verb|syscall::write*:entry| & process writes\\
+\verb|syscall::open*:entry| & file open\\
+\verb|proc:::exec-success| & process create\\
+\verb|io:::start,io:::done| & storage I/O\\
+\verb|lockstat:::adaptive-block| & kernel blocking mutex\\
+\verb|sched:::off-cpu| & thread leaves a CPU\\
+\verb|fbt:::entry| & all kernel functions\\
+\verb|profile-123 | & sample at 123Hz\\
+\end{tabular}
+
+\section{D VARIABLES}
+\begin{tabular}{@{}ll@{}}
+\verb|execname| & on-CPU process name \\
+\verb|pid, tid| & on-CPU PID, Thread ID\\
+\verb|cpu| & CPU ID\\
+\verb|timestamp| & time, nanoseconds\\
+\verb|vtimestamp| & time thread was on-CPU (ns)\\
+\verb|arg0...N| & probe args (uint64)\\
+\verb|args[0]...[N]| & probe args (type'd)\\
+\verb|curthread| & pointer to current thread \\
+\verb|probemod| & module name\\
+\verb|probefunc| & function name\\
+\verb|probename| & probe name\\
+\verb|self->foo| & thread local variable\\
+\verb|this->foo| & clause local variable\\
+\verb|$1...$N| & arguments as integers\\
+\verb|$$1...$$N| & arguments as strings\\
+\verb|$target| & -p PID, -c command\\
+\verb|curpsinfo| & process information\\
+\end{tabular}
+
+\section{ACTIONS}
+\begin{tabular}{@{}ll@{}}
+\verb|@agg[key1, key2] = count()| & frequency count\\
+  \verb|@agg[key1, key2] = sum(var)| & sum variable\\
+  \verb|@agg[key1, key2] = quantize(var)| & power of 2 quanization\\
+  \verb|printf("format", var0...varN)| & print vars\\
+  \verb|stack(num), ustack(num)| & print num lines of kernel or user
+                                   stack\\
+  \verb|func(pc), ufunc(pc)| & return kernel/user function name from a
+                               PC\\
+  \verb|clear(@)| & clear an aggregation\\
+  \verb|trunc(@, 5)| & truncate aggreation to top 5 entries\\
+  \verb|stringof(ptr)| & string from kernel address\\
+  \verb|copyinstr(ptr)| & string from user address\\
+  \verb|exit(0);| & exit dtrace\\
+\end{tabular}
+
+\section{SWITCHES}
+\begin{tabular}{@{}ll@{}}
+\verb|-n| & trace the given probe point\\
+\verb|-l| & list probes instead of tracing\\
+\verb|-q| & quiet; don't print default output\\
+  \verb|-s <file>| & invoke a D script file\\
+\verb|-w| & allow destructive actions\\
+\verb|-p PID| & allow \verb|pid:::| provider to trace this pid; it's also \verb|$target|\\
+\verb|-c 'command'| & have dtrace invoke a command\\
+\verb|-o file| & send trace output to a file\\
+\verb|-x options| & set various DTrace options (switchrate, bufsize...)\\
+\end{tabular}
+
+\section{PRAGMAS}
+\begin{tabular}{@{}ll@{}}
+\verb|#pragma D option quiet| & same as \verb|-q|, quiet output\\
+\verb|#pragma D option destructive| & same as \verb|-w|, allow
+                                      destructive actions\\
+  \verb|#pragma D option switchrate=10hz| & print at 10Hz instead of
+                                            1Hz\\
+  \verb|#pragma D option bufsize=16m| & set per-CPU buffer size\\
+  \verb|#pragma D option defaultargs| & \verb|$1| is 0, \verb|$$1| is ""\\
+\end{tabular}
+
+\section{ONE-LINERS}
+\begin{lstlisting}
+dtrace -n 'proc:::exec-success{ trace(curpsinfo->pr_psargs); }'
+dtrace -n 'syscall:::entry { @num[execname] = count(); }'
+dtrace -n 'syscall::open*:entry { printf("%s %s", execname, copyinstr(arg0)); }' dtrace -n 'io:::start { @size = quantize(args[0]->b_bcount); }'
+dtrace -n 'fbt:::entry { @calls[probemod] = count(); }'
+dtrace -n 'sysinfo:::xcalls { @num[execname] = count(); }'
+dtrace -n 'profile-1001 { @[stack()] = count() }'
+dtrace -n 'profile-101 /pid == $target/ { @[ustack()] = count() }' -p PID dtrace -n 'syscall:::entry { @num[probefunc] = count(); }'
+dtrace -n 'syscall::read*:entry { @[fds[arg0].fi_pathname] = count(); }'
+dtrace -n 'vminfo:::as_fault { @mem[execname] = sum(arg0); }'
+dtrace -n 'sched:::off-cpu /pid == $target/ { @[stack()] = count(); }' -p PID dtrace -n 'pid$target:libfoo::entry { @[probefunc] = count(); }' -p PID
+\end{lstlisting}
+\end{multicols}
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
