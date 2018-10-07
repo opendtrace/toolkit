@@ -47,6 +47,11 @@ In the following example, syscall elapsed and overhead times are measured.
 Elapsed times represent the time from syscall start to finish; overhead
 times measure the time spent on the CPU,
 
+Note: In the case that DTrace script size is exceeded, dtrace_dof_maxsize
+can be tuned in /etc/system or "mdb -kw".  In "mdb -kw", running
+"dtrace_dof_maxsize/Z 0t524288" will double the default size.  Run
+"dtrace_dof_maxsize/E" to see current dtrace script size limit.
+
  # dtruss -eon bash
  PID/LWP    ELAPSD    CPU SYSCALL(args)           = return
   3911/1:       41     26 write(0x2, "l\0", 0x1)          = 1 0

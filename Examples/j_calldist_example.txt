@@ -1,3 +1,18 @@
+There are two ways to DTrace Java process via hotspot provider:
+1. Run Java process with '-XX:+ExtendedDTraceProbes' option, and
+also enable hotspot probes lazy loading by Java PID (# dtrace -n
+'hotspot<PID>:::'), one can see all but this j_who.d script
+working.  There still seem to be less probes enabled than making
+the modification as in the lower method.
+2. Modify all DTrace Java scripts to change provider 'hotspot*'
+to 'hotspot$target' or 'hotspot_jni$target' depending on the
+specific probes.  Run the Java process with DTrace (i.e. # dtrace
+-Zs ./j_who_tmp.d -c 'java -XX:+ExtendedDTraceProbes Func_abc')
+Here, 'hotspot*' is changed to 'hotspot_jni$target' in j_who_tmp.d
+script.  'Func_abc' is a simple Java process.
+
+
+
 This is an example of j_calldist.d showing the elapsed times for different
 types of Java operations.
 

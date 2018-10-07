@@ -25,7 +25,7 @@
  * BASED ON: /usr/demo/dtrace/profpri.d
  *
  * SEE ALSO:
- *           DTrace Guide "profile Provider" chapter (docs.sun.com)
+ *           DTrace Guide "profile Provider" chapter (docs.oracle.com)
  *           dispadmin(1M)
  *
  * PORTIONS: Copyright (c) 2005 Brendan Gregg.

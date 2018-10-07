@@ -91,15 +91,13 @@ DTraceToolkit/
    Net/
 	connections	print inbound TCP connections by process
 	icmpstat.d	print ICMP statistics
-	tcpsnoop	snoop TCP network packets by process, Solaris 10 3/05
-	tcpsnoop_snv	snoop TCP network packets by process, Solaris Nevada
 	tcpsnoop.d	snoop TCP network packets by process, Solaris 10 3/05
-	tcpsnoop_snv.d	snoop TCP network packets by process, Solaris Nevada
 	tcpstat.d	print TCP statistics
-	tcptop		display top TCP network packets by PID, Solaris 10 3/05
-	tcptop_snv	display top TCP network packets by PID, Solaris Nevada
+	tcptop.d	display top TCP network packets by PID
 	tcpwdist.d	simple TCP write distribution by process
 	udpstat.d	print UDP statistics
+	udpsnoop.d	snoop UDP network packets by process
+	udptop.d	display top UDP network packets by process
    Perl/
 	pl_*.d		12 scripts for tracing Perl
    Php/

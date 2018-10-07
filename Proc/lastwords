@@ -23,7 +23,7 @@
 #
 # BASED ON: /usr/demo/dtrace/ring.d
 #
-# SEE ALSO: DTrace Guide "Buffers and Buffering" chapter (docs.sun.com)
+# SEE ALSO: DTrace Guide "Buffers and Buffering" chapter (docs.oracle.com)
 #           dtruss (DTraceToolkit)
 #
 # PORTIONS: Copyright (c) 2005, 2006 Brendan Gregg.

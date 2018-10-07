@@ -21,26 +21,26 @@ CPU     ID                    FUNCTION:NAME
 
 ### Files opened by process,
  
-# dtrace -n 'syscall::open*:entry { printf("%s %s",execname,copyinstr(arg0)); }'
-dtrace: description 'syscall::open*:entry ' matched 2 probes
+# dtrace -n 'syscall::openat*:entry { printf("%s %s",execname,copyinstr(arg1)); }'
+dtrace: description 'syscall::openat*:entry ' matched 2 probes
 CPU     ID                    FUNCTION:NAME
-  0     14                       open:entry gnome-netstatus- /dev/kstat
-  0     14                       open:entry man /var/ld/ld.config
-  0     14                       open:entry man /lib/libc.so.1
-  0     14                       open:entry man /usr/share/man/man.cf
-  0     14                       open:entry man /usr/share/man/windex
-  0     14                       open:entry man /usr/share/man/man1/ls.1
-  0     14                       open:entry man /usr/share/man/man1/ls.1
-  0     14                       open:entry man /tmp/mpqea4RF
-  0     14                       open:entry sh /var/ld/ld.config
-  0     14                       open:entry sh /lib/libc.so.1
-  0     14                       open:entry neqn /var/ld/ld.config
-  0     14                       open:entry neqn /lib/libc.so.1
-  0     14                       open:entry neqn /usr/share/lib/pub/eqnchar
-  0     14                       open:entry tbl /var/ld/ld.config
-  0     14                       open:entry tbl /lib/libc.so.1
-  0     14                       open:entry tbl /usr/share/man/man1/ls.1
-  0     14                       open:entry nroff /var/ld/ld.config
+  0     14                       openat:entry gnome-netstatus- /dev/kstat
+  0     14                       openat:entry man /var/ld/ld.config
+  0     14                       openat:entry man /lib/libc.so.1
+  0     14                       openat:entry man /usr/share/man/man.cf
+  0     14                       openat:entry man /usr/share/man/windex
+  0     14                       openat:entry man /usr/share/man/man1/ls.1
+  0     14                       openat:entry man /usr/share/man/man1/ls.1
+  0     14                       openat:entry man /tmp/mpqea4RF
+  0     14                       openat:entry sh /var/ld/ld.config
+  0     14                       openat:entry sh /lib/libc.so.1
+  0     14                       openat:entry neqn /var/ld/ld.config
+  0     14                       openat:entry neqn /lib/libc.so.1
+  0     14                       openat:entry neqn /usr/share/lib/pub/eqnchar
+  0     14                       openat:entry tbl /var/ld/ld.config
+  0     14                       openat:entry tbl /lib/libc.so.1
+  0     14                       openat:entry tbl /usr/share/man/man1/ls.1
+  0     14                       openat:entry nroff /var/ld/ld.config
 [...]
 
 
@@ -253,7 +253,7 @@ dtrace: description 'sdt:::interrupt-start ' matched 1 probe
 
 ### New processes with arguments and time,
  
-# dtrace -qn 'syscall::exec*:return { printf("%Y %s\n",walltimestamp,curpsinfo->pr_psargs); }'
+# dtrace -qn 'syscall::exece:return { printf("%Y %s\n",walltimestamp,curpsinfo->pr_psargs); }'
 2005 Apr 25 19:15:09 man ls
 2005 Apr 25 19:15:09 sh -c cd /usr/share/man; tbl /usr/share/man/man1/ls.1 |...
 2005 Apr 25 19:15:09 neqn /usr/share/lib/pub/eqnchar -

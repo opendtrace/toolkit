@@ -19,7 +19,7 @@
  *
  * BASED ON: /usr/demo/dtrace/sig.d
  *
- * SEE ALSO: DTrace Guide "proc Provider" chapter (docs.sun.com)
+ * SEE ALSO: DTrace Guide "proc Provider" chapter (docs.oracle.com)
  *           kill.d(1M)
  *
  * PORTIONS: Copyright (c) 2005, 2006 Brendan Gregg.

@@ -17,16 +17,17 @@
 #		connections -v	# snoop connections with times
 #
 # FIELDS:
-#		UID		user ID of the server
+#		ZONE_ID		zone ID
 #		PID		process ID for the server
-#		CMD		server command name
+#		IP_SOURCE	source IP of the client
+#		PORT		server port
 #		TIME		timestamp, us
 #		TIMESTR		timestamp, string
-#		PORT		server port
-#		IP_SOURCE	source IP of the client, written in IPv4 style
 #		ZONE		zonename
 #
 # SEE ALSO:	snoop 'tcp[13:1] = 0x02'	# snoop new connections
+#
+# Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
 #
 # COPYRIGHT: Copyright (c) 2005 Brendan Gregg.
 #
@@ -54,11 +55,8 @@
 # 20-Apr-2006	   "	  "	Fixed SS_TCP_FAST_ACCEPT bug in build 31+.
 # 20-Apr-2006	   "	  "	Last update.
 #
+# 26-Jun-2014	 Melvin Gong	Rewrote, using tcp provider
 
-
-##############################
-# --- Process Arguments ---
-#
 
 ### Default variables
 opt_time=0; opt_timestr=0; opt_zone=0
@@ -66,32 +64,23 @@ opt_time=0; opt_timestr=0; opt_zone=0
 ### Process options
 while getopts htvZ name
 do
-	case $name in
-	t)      opt_time=1 ;;
-	v)      opt_timestr=1 ;;
-	Z)      opt_zone=1 ;;
-	h|?)    cat <<-END >&2
-		USAGE: connections [-htvZ]
-			   -t              # print timestamps, us
-			   -v              # print timestamps, string
-			   -Z              # print zonename
-		  eg,
-		       connections -v      # snoop connections with times
+        case $name in
+        t)      opt_time=1 ;;
+        v)      opt_timestr=1 ;;
+        Z)      opt_zone=1 ;;
+        h|?)    cat <<-END >&2
+                USAGE: connections [-htvZ]
+                        -t              # print timestamps, us
+                        -v              # print timestamps, string
+                        -Z              # print zonename
+                  eg,
+                      connections -v    # snoop connections with times
 		END
-		exit 1
-	esac
+                exit 1
+        esac
 done
 
-
-#################################
-# --- Main Program, DTrace ---
-#
 /usr/sbin/dtrace -C -s <( print -r '
-#include <sys/file.h>
-#include <sys/types.h>
-#include <sys/byteorder.h>
-#include <sys/socket.h>
-#include <sys/socketvar.h>
 
  #pragma D option quiet
  #pragma D option switchrate=10hz
@@ -103,76 +92,29 @@ done
  /*
   * Print header
   */
- dtrace:::BEGIN 
+ dtrace:::BEGIN
  {
         /* print optional headers */
-        OPT_time    ? printf("%-14s ", "TIME") : 1;
-        OPT_timestr ? printf("%-20s ", "TIMESTR") : 1;
-	OPT_zone    ? printf("%-10s ", "ZONE") : 1;
+        OPT_time        ? printf("%-14s ", "TIME") : 1;
+        OPT_timestr     ? printf("%-20s ", "TIMESTR") : 1;
+        OPT_zone        ? printf("%-10s ", "ZONE") : 1;
 
-	/* print header */
-	printf("%5s %5s %-12s %4s %5s %s\n",
-	    "UID", "PID", "CMD", "TYPE", "PORT", "IP_SOURCE");
+        printf("%8s %7s %15s %7s\n",
+            "ZONE_ID", "PID", "IP_SOURCE", "PORT");
  }
 
  /*
-  * TCP Process inbound connections
-  *
-  * 0x00200000 has been hardcoded. It was SS_TCP_FAST_ACCEPT, but was
-  * renamed to SS_DIRECT around build 31.
+  * Probe new TCP accepted connections
   */
- fbt:sockfs:sotpi_accept:entry
- /(arg1 & FREAD) && (arg1 & FWRITE) && (args[0]->so_state & 0x00200000)/
+ tcp:::accept-established
  {
-	self->sop = args[0];
- }
+         /* print optional fields */
+         OPT_time       ? printf("%-14d ", timestamp/1000) : 1;
+         OPT_timestr    ? printf("%-20Y ", walltimestamp) : 1;
+         OPT_zone       ? printf("%-10s ", zonename) : 1;
 
- fbt:sockfs:sotpi_create:return
- /self->sop/
- {
-	self->nsop = (struct sonode *)arg1;
- }
-
-
- /*
-  * Probe TCP connections
-  */
- fbt:sockfs:sotpi_accept:return
- /self->nsop/
- {
-	/* fetch connection details */
-	this->tcpp = (tcp_t *)self->nsop->so_priv;
-	this->connp = (conn_t *)this->tcpp->tcp_connp;
-
-#if defined(_BIG_ENDIAN)
-	this->port0 = this->connp->u_port.tcpu_ports.tcpu_lport;
-#else
-	this->port0 = BSWAP_16(this->connp->u_port.tcpu_ports.tcpu_lport);
-#endif
-	this->rem12 = 
-	    (uint8_t)this->connp->connua_v6addr.connua_faddr._S6_un._S6_u8[12];
-	this->rem13 =
-	    (uint8_t)this->connp->connua_v6addr.connua_faddr._S6_un._S6_u8[13];
-	this->rem14 =
-	    (uint8_t)this->connp->connua_v6addr.connua_faddr._S6_un._S6_u8[14];
-	this->rem15 =
-	    (uint8_t)this->connp->connua_v6addr.connua_faddr._S6_un._S6_u8[15];
-
-        /* print optional fields */
-        OPT_time    ? printf("%-14d ", timestamp/1000) : 1;
-        OPT_timestr ? printf("%-20Y ", walltimestamp) : 1;
-	OPT_zone    ? printf("%-10s ", zonename) : 1;
-
-	/* print output line */
-	printf("%5d %5d %-12s %4s %5d %d.%d.%d.%d\n",
-	    uid, pid, execname, "tcp", this->port0, 
-	    this->rem12, this->rem13, this->rem14, this->rem15);
- }
-
- fbt:sockfs:sotpi_accept:return
- {
-	self->nsop = 0;
-	self->sop = 0;
+         printf("%8d %7d %15s %7d\n",
+             args[1]->cs_zoneid, args[1]->cs_pid,
+             args[2]->ip_saddr, args[4]->tcp_dport);
  }
 ')
-

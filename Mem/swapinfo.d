@@ -33,6 +33,8 @@
  *           "Solaris Internals", Jim Mauro, Richard McDougall
  *           /usr/include/vm/anon.h, /usr/include/sys/systm.h
  *
+ * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+ *
  * COPYRIGHT: Copyright (c) 2005, 2006 Brendan Gregg.
  *
  * CDDL HEADER START
@@ -54,6 +56,7 @@
  * 11-Jun-2005  Brendan Gregg   Created this.
  * 24-Apr-2006	   "	  "	Improved disk measurements; changed terms.
  * 24-Apr-2006	   "	  "	Last update.
+ * 16-Jan-2014	Melvin Gong	Updated kpages_locked and k_anoninfo.
  */
 
 #pragma D option quiet
@@ -64,43 +67,43 @@ inline int DEBUG = 0;
 dtrace:::BEGIN
 {
 	/* Debug stats */
-	this->ani_max = `k_anoninfo.ani_max;
-	this->ani_phys_resv = `k_anoninfo.ani_phys_resv;
+	this->ani_phys_max = `k_anoninfo.ani_phys_max;
+	this->ani_phys_avail = `k_anoninfo.ani_phys_avail;
 	this->ani_mem_resv = `k_anoninfo.ani_mem_resv;
-	this->ani_locked = `k_anoninfo.ani_locked_swap;
+	this->ani_locked = `k_anoninfo.ani_mem_locked;
 	this->availrmem = `availrmem;
 
 	/* RAM stats */
 	this->ram_total = `physinstalled;
 	this->unusable  = `physinstalled - `physmem;
-	this->locked    = `pages_locked;
+	this->locked    = `kpages_locked;
 	this->ram_used  = `availrmem - `freemem;
 	this->freemem   = `freemem;
-	this->kernel    = `physmem - `pages_locked - `availrmem;
+	this->kernel    = `physmem - `kpages_locked - `availrmem;
 
 	/* Disk stats */
-	this->disk_total = `k_anoninfo.ani_max;
-	this->disk_resv = `k_anoninfo.ani_phys_resv;
+	this->disk_total = `k_anoninfo.ani_phys_max;
+	this->disk_resv = `k_anoninfo.ani_phys_avail;
 	this->disk_avail = this->disk_total - this->disk_resv;
 
 	/* Total Swap stats */
 	this->minfree = `swapfs_minfree;
 	this->reserve = `swapfs_reserve;
 	/* this is TOTAL_AVAILABLE_SWAP from /usr/include/vm/anon.h, */
-	this->swap_total = `k_anoninfo.ani_max +
+	this->swap_total = `k_anoninfo.ani_phys_max +
 	    (`availrmem - `swapfs_minfree > 0 ?
 	    `availrmem - `swapfs_minfree : 0);
 	/* this is CURRENT_TOTAL_AVAILABLE_SWAP from /usr/include/vm/anon.h, */
-	this->swap_avail = `k_anoninfo.ani_max - `k_anoninfo.ani_phys_resv +
+	this->swap_avail = `k_anoninfo.ani_phys_avail + `Asleep_availrmem +
 	    (`availrmem - `swapfs_minfree > 0 ?
 	    `availrmem - `swapfs_minfree : 0);
 	this->swap_resv = this->swap_total - this->swap_avail;
 
 	/* Convert to Mbytes */
-	this->ani_phys_resv *= `_pagesize;  this->ani_phys_resv /= 1048576;
+	this->ani_phys_avail *= `_pagesize;  this->ani_phys_avail /= 1048576;
 	this->ani_mem_resv *= `_pagesize;  this->ani_mem_resv /= 1048576;
 	this->ani_locked *= `_pagesize;  this->ani_locked /= 1048576;
-	this->ani_max	*= `_pagesize;  this->ani_max	/= 1048576;
+	this->ani_phys_max	*= `_pagesize;  this->ani_phys_max	/= 1048576;
 	this->availrmem	*= `_pagesize;  this->availrmem	/= 1048576;
 	this->ram_total	*= `_pagesize;  this->ram_total	/= 1048576;
 	this->unusable	*= `_pagesize;  this->unusable	/= 1048576;
@@ -120,8 +123,8 @@ dtrace:::BEGIN
 	/* Print debug */
 	DEBUG ? printf("DEBUG   availrmem %5d MB\n", this->availrmem) : 1;
 	DEBUG ? printf("DEBUG     freemem %5d MB\n", this->freemem) : 1;
-	DEBUG ? printf("DEBUG     ani_max %5d MB\n", this->ani_max) : 1;
-	DEBUG ? printf("DEBUG ani_phys_re %5d MB\n", this->ani_phys_resv) : 1;
+	DEBUG ? printf("DEBUG ani_phy_max %5d MB\n", this->ani_phys_max) : 1;
+	DEBUG ? printf("DEBUG ani_phys_re %5d MB\n", this->ani_phys_avail) : 1;
 	DEBUG ? printf("DEBUG  ani_mem_re %5d MB\n", this->ani_mem_resv) : 1;
 	DEBUG ? printf("DEBUG  ani_locked %5d MB\n", this->ani_locked) : 1;
 	DEBUG ? printf("DEBUG     reserve %5d MB\n", this->reserve) : 1;

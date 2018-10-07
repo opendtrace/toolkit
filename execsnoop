@@ -155,7 +155,7 @@ fi
  /*
   * Print exec event
   */
- syscall::exec:return, syscall::exece:return
+ syscall::exece:return
  /(FILTER == 0) || (OPT_cmd == 1 && COMMAND == execname)/ 
  {
 	/* print optional fields */

@@ -14,7 +14,7 @@
  *              SIG      destination signal ("9" for a kill -9)
  *              RESULT   result of signal (-1 is for failure)
  *
- * SEE ALSO: Chapter 25, Solaris Dynamic Tracing Guide, docs.sun.com,
+ * SEE ALSO: Chapter 25, Solaris Dynamic Tracing Guide, docs.oracle.com,
  *           for a solution using proc:::signal-send.
  *
  * COPYRIGHT: Copyright (c) 2005 Brendan Gregg.

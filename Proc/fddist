@@ -20,7 +20,7 @@
 # BASED ON: /usr/demo/dtrace/lquantize.d
 #
 # SEE ALSO:
-#           DTrace Guide "Aggregations" chapter (docs.sun.com)
+#           DTrace Guide "Aggregations" chapter (docs.oracle.com)
 #
 # PORTIONS: Copyright (c) 2005, 2006 Brendan Gregg.
 #

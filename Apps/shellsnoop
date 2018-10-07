@@ -140,7 +140,7 @@ dtrace -n '
  /*
   * Remember this PID is a shell child
   */
- syscall::exec:entry, syscall::exece:entry
+ syscall::exece:entry
  /execname == "sh"   || execname == "ksh"  || execname == "csh"  || 
   execname == "tcsh" || execname == "zsh"  || execname == "bash"/
  {
@@ -151,7 +151,7 @@ dtrace -n '
 	OPT_debug == 1 ? printf("PID %d CMD %s started. (%s)\n",
 	    pid, execname, stringof(this->parent)) : 1;
  }
- syscall::exec:entry, syscall::exece:entry
+ syscall::exece:entry
  /(OPT_pid == 1 && PID != ppid) || (OPT_uid == 1 && UID != uid)/
  {
 	/* forget if filtered */

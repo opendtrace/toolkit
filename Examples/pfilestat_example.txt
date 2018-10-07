@@ -79,7 +79,7 @@ statistics: one is a 867 MHz Pentium, and the other a 360 MHz Ultra 5).
 
 The file system cache is faster on 64-bit systems due to the segkpm
 enhancement in Solaris 10. For details see,
-http://blogs.sun.com/roller/page/rmc?entry=solaris_10_fast_filesystem_cache
+http://blogs.oracle.com/rmc?entry=solaris_10_fast_filesystem_cache
 
 
 

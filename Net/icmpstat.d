@@ -15,7 +15,7 @@
  *
  * The above ICMP statistics are documented in the mib2_icmp struct
  * in the /usr/include/inet/mib2.h file; and also in the mib provider
- * chapter of the DTrace Guide, http://docs.sun.com/db/doc/817-6223.
+ * chapter of the DTrace Guide, http://docs.oracle.com/cd/E23824_01/html/E22973.
  *
  * COPYRIGHT: Copyright (c) 2005 Brendan Gregg.
  *

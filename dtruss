@@ -137,6 +137,7 @@ fi
 
 ### Option translation
 if [ "$trace" = "exec" ]; then trace="exece"; fi
+if [ "$trace" = "fork" ]; then trace="forksys"; fi
 if [ "$trace" = "time" ]; then trace="gtime"; fi
 if [ "$trace" = "exit" ]; then trace="rexit"; fi
 
@@ -149,7 +150,7 @@ if [ "$trace" = "exit" ]; then trace="rexit"; fi
 dtrace='
 #pragma D option quiet
 #pragma D option switchrate=10
- 
+
 /*
  * Command line arguments
  */
@@ -167,7 +168,7 @@ inline int OPT_stack     = '$opt_stack';
 inline string NAME       = "'$pname'";
 inline string TRACE      = "'$trace'";
 
-dtrace:::BEGIN 
+dtrace:::BEGIN
 {
 	/* print header */
 	OPT_printid  ? printf("%-9s  ", "PID/LWP") : 1;
@@ -181,7 +182,7 @@ dtrace:::BEGIN
  * Save syscall entry info
  */
 syscall:::entry
-/((OPT_command || OPT_pid) && pid == $target) || 
+/((OPT_command || OPT_pid) && pid == $target) ||
  (OPT_name && execname == NAME) ||
  (OPT_follow && progenyof($target))/
 {
@@ -191,6 +192,7 @@ syscall:::entry
 	self->arg0 = arg0;
 	self->arg1 = arg1;
 	self->arg2 = arg2;
+	self->arg3 = arg3;
 
 	/* count occurances */
 	OPT_counts == 1 ? @Counts[probefunc] = count() : 1;
@@ -198,8 +200,10 @@ syscall:::entry
 
 /*
  * Follow children
+ * (vfork() is only executed by a process running in an S10-branded zone.)
  */
-syscall::fork*:return
+syscall::forksys:return,
+syscall::vfork:return
 /(OPT_follow && progenyof($target)) && (!OPT_trace || (TRACE == probefunc))/
 {
 	/* print output */
@@ -225,6 +229,7 @@ syscall:::entry
 	self->arg0 = 0;
 	self->arg1 = 0;
 	self->arg2 = 0;
+	self->arg3 = 0;
 }
 
 /*
@@ -249,13 +254,13 @@ syscall::lwp_sigmask:return
 	this->cpu = vtimestamp - self->vstart;
 	self->vstart = 0;
 	self->code = errno == 0 ? "" : "Err#";
- 
+
 	/* print optional fields */
 	OPT_printid  ? printf("%6d/%d:  ", pid, tid) : 1;
 	OPT_relative ? printf("%8d ", vtimestamp/1000) : 1;
 	OPT_elapsed  ? printf("%7d ", this->elapsed/1000) : 1;
 	OPT_cpu ? printf("%6d ", this->cpu/1000) : 1;
- 
+
 	/* print main data */
 	printf("%s(0x%X, 0x%X, 0x%X)\t\t = 0x%X %s%d\n", probefunc,
 	    (int)self->arg0, self->arg1, self->arg2, (int)arg0,
@@ -265,13 +270,12 @@ syscall::lwp_sigmask:return
 	self->arg0 = 0;
 	self->arg1 = 0;
 	self->arg2 = 0;
+	self->arg3 = 0;
 }
 
-/* print 3 args, arg0 as a string */
-syscall::stat*:return, 
-syscall::lstat*:return, 
-syscall::open*:return,
-syscall::resolvepath:return
+/* print 1 arg, arg0 as a string */
+syscall::chdir:return,
+syscall::chroot:return
 /self->start/
 {
 	/* calculate elapsed time */
@@ -280,13 +284,122 @@ syscall::resolvepath:return
 	this->cpu = vtimestamp - self->vstart;
 	self->vstart = 0;
 	self->code = errno == 0 ? "" : "Err#";
- 
+
 	/* print optional fields */
 	OPT_printid  ? printf("%6d/%d:  ", pid, tid) : 1;
 	OPT_relative ? printf("%8d ", vtimestamp/1000) : 1;
 	OPT_elapsed  ? printf("%7d ", this->elapsed/1000) : 1;
 	OPT_cpu      ? printf("%6d ", this->cpu/1000) : 1;
- 
+
+	/* print main data */
+	printf("%s(\"%S\")\t\t = %d %s%d\n", probefunc,
+	    copyinstr(self->arg0), (int)arg0,
+	    self->code, (int)errno);
+	OPT_stack ? ustack()    : 1;
+	OPT_stack ? trace("\n") : 1;
+	self->arg0 = 0;
+	self->arg1 = 0;
+	self->arg2 = 0;
+	self->arg3 = 0;
+}
+
+/* print 2 args, arg0 as a string */
+syscall::getcwd:return,
+syscall::pathconf:return,
+syscall::statvfs64:return,
+syscall::statvfs:return,
+syscall::umount2:return
+/self->start/
+{
+	/* calculate elapsed time */
+	this->elapsed = timestamp - self->start;
+	self->start = 0;
+	this->cpu = vtimestamp - self->vstart;
+	self->vstart = 0;
+	self->code = errno == 0 ? "" : "Err#";
+
+	/* print optional fields */
+	OPT_printid  ? printf("%6d/%d:  ", pid, tid) : 1;
+	OPT_relative ? printf("%8d ", vtimestamp/1000) : 1;
+	OPT_elapsed  ? printf("%7d ", this->elapsed/1000) : 1;
+	OPT_cpu      ? printf("%6d ", this->cpu/1000) : 1;
+
+	/* print main data */
+	printf("%s(\"%S\", 0x%X)\t\t = %d %s%d\n", probefunc,
+	    copyinstr(self->arg0), self->arg1, (int)arg0,
+	    self->code, (int)errno);
+	OPT_stack ? ustack()    : 1;
+	OPT_stack ? trace("\n") : 1;
+	self->arg0 = 0;
+	self->arg1 = 0;
+	self->arg2 = 0;
+	self->arg3 = 0;
+}
+
+/* print *at() syscalls, 3 args, arg1 as a string if possible */
+syscall::faccessat:return,
+syscall::fchmodat:return,
+syscall::fchownat:return,
+syscall::fstatat:return,
+syscall::fstatat64:return,
+syscall::linkat:return,
+syscall::mkdirat:return,
+syscall::mknodat:return,
+syscall::openat:return,
+syscall::openat64:return,
+syscall::readlinkat:return,
+syscall::renameat:return,
+syscall::unlinkat:return,
+syscall::utimensat:return
+/self->start && self->arg1 != 0/
+{
+	/* calculate elapsed time */
+	this->elapsed = timestamp - self->start;
+	self->start = 0;
+	this->cpu = vtimestamp - self->vstart;
+	self->vstart = 0;
+	self->code = errno == 0 ? "" : "Err#";
+
+	/* print optional fields */
+	OPT_printid  ? printf("%6d/%d:  ", pid, tid) : 1;
+	OPT_relative ? printf("%8d ", vtimestamp/1000) : 1;
+	OPT_elapsed  ? printf("%7d ", this->elapsed/1000) : 1;
+	OPT_cpu      ? printf("%6d ", this->cpu/1000) : 1;
+
+	/* print main data */
+	printf("%s(0x%X, \"%S\", 0x%X)\t\t = %d %s%d\n", probefunc,
+	    (uint_t)self->arg0, copyinstr(self->arg1), self->arg2, (int)arg0,
+	    self->code, (int)errno);
+	OPT_stack ? ustack()    : 1;
+	OPT_stack ? trace("\n") : 1;
+	self->arg0 = 0;
+	self->arg1 = 0;
+	self->arg2 = 0;
+	self->arg3 = 0;
+}
+
+/* print 3 args, arg0 as a string */
+syscall::acl:return,
+syscall::mount:return,
+syscall::resolvepath:return,
+syscall::statfs:return,
+syscall::symlinkat:return,
+syscall::uucopystr:return
+/self->start/
+{
+	/* calculate elapsed time */
+	this->elapsed = timestamp - self->start;
+	self->start = 0;
+	this->cpu = vtimestamp - self->vstart;
+	self->vstart = 0;
+	self->code = errno == 0 ? "" : "Err#";
+
+	/* print optional fields */
+	OPT_printid  ? printf("%6d/%d:  ", pid, tid) : 1;
+	OPT_relative ? printf("%8d ", vtimestamp/1000) : 1;
+	OPT_elapsed  ? printf("%7d ", this->elapsed/1000) : 1;
+	OPT_cpu      ? printf("%6d ", this->cpu/1000) : 1;
+
 	/* print main data */
 	printf("%s(\"%S\", 0x%X, 0x%X)\t\t = %d %s%d\n", probefunc,
 	    copyinstr(self->arg0), self->arg1, self->arg2, (int)arg0,
@@ -296,13 +409,17 @@ syscall::resolvepath:return
 	self->arg0 = 0;
 	self->arg1 = 0;
 	self->arg2 = 0;
+	self->arg3 = 0;
 }
 
-/* print 3 args, arg1 as a string */
+/* print 3 args, arg1 as a string bounded by return value (size) */
+syscall::read:return,
+syscall::pread:return,
+syscall::pread64:return,
 syscall::write:return,
 syscall::pwrite:return,
-syscall::*read*:return
-/self->start/
+syscall::pwrite64:return
+/self->start && arg0 > 0/
 {
 	/* calculate elapsed time */
 	this->elapsed = timestamp - self->start;
@@ -310,27 +427,28 @@ syscall::*read*:return
 	this->cpu = vtimestamp - self->vstart;
 	self->vstart = 0;
 	self->code = errno == 0 ? "" : "Err#";
- 
+
 	/* print optional fields */
 	OPT_printid  ? printf("%6d/%d:  ", pid, tid) : 1;
 	OPT_relative ? printf("%8d ", vtimestamp/1000) : 1;
 	OPT_elapsed  ? printf("%7d ", this->elapsed/1000) : 1;
 	OPT_cpu      ? printf("%6d ", this->cpu/1000) : 1;
- 
+
 	/* print main data */
+	this->size = arg0 > 32? 32 : arg0;
 	printf("%s(0x%X, \"%S\", 0x%X)\t\t = %d %s%d\n", probefunc, self->arg0,
-	    stringof(copyin(self->arg1, self->arg2)), self->arg2, (int)arg0,
+	    stringof(copyin(self->arg1, this->size)), self->arg2, (int)arg0,
 	    self->code, (int)errno);
 	OPT_stack ? ustack()    : 1;
 	OPT_stack ? trace("\n") : 1;
 	self->arg0 = 0;
 	self->arg1 = 0;
 	self->arg2 = 0;
+	self->arg3 = 0;
 }
 
-/* print 0 arg output */
-syscall::gtime:return,
-syscall::*fork*:return
+/* print 0 arg output (there are lots more 0-arg syscalls) */
+syscall::gtime:return
 /self->start/
 {
 	/* calculate elapsed time */
@@ -339,13 +457,13 @@ syscall::*fork*:return
 	this->cpu = vtimestamp - self->vstart;
 	self->vstart = 0;
 	self->code = errno == 0 ? "" : "Err#";
- 
+
 	/* print optional fields */
 	OPT_printid  ? printf("%6d/%d:  ", pid, tid) : 1;
 	OPT_relative ? printf("%8d ", vtimestamp/1000) : 1;
 	OPT_elapsed  ? printf("%7d ", this->elapsed/1000) : 1;
 	OPT_cpu      ? printf("%6d ", this->cpu/1000) : 1;
- 
+
 	/* print main data */
 	printf("%s()\t\t = %d %s%d\n", probefunc,
 	    (int)arg0, self->code, (int)errno);
@@ -354,13 +472,14 @@ syscall::*fork*:return
 	self->arg0 = 0;
 	self->arg1 = 0;
 	self->arg2 = 0;
+	self->arg3 = 0;
 }
 
-/* print 1 arg output */
+/* print 1 arg output (there are lots more 1-arg syscalls) */
 syscall::brk:return,
-syscall::times:return,
+syscall::close:return,
 syscall::stime:return,
-syscall::close:return
+syscall::times:return
 /self->start/
 {
 	/* calculate elapsed time */
@@ -369,13 +488,13 @@ syscall::close:return
 	this->cpu = vtimestamp - self->vstart;
 	self->vstart = 0;
 	self->code = errno == 0 ? "" : "Err#";
- 
+
 	/* print optional fields */
 	OPT_printid  ? printf("%6d/%d:  ", pid, tid) : 1;
 	OPT_relative ? printf("%8d ", vtimestamp/1000) : 1;
 	OPT_elapsed  ? printf("%7d ", this->elapsed/1000) : 1;
 	OPT_cpu      ? printf("%6d ", this->cpu/1000) : 1;
- 
+
 	/* print main data */
 	printf("%s(0x%X)\t\t = %d %s%d\n", probefunc, self->arg0,
 	    (int)arg0, self->code, (int)errno);
@@ -384,10 +503,10 @@ syscall::close:return
 	self->arg0 = 0;
 	self->arg1 = 0;
 	self->arg2 = 0;
+	self->arg3 = 0;
 }
 
-/* print 2 arg output */
-syscall::utime:return,
+/* print 2 arg output (there are lots more 2-arg syscalls) */
 syscall::munmap:return
 /self->start/
 {
@@ -397,13 +516,13 @@ syscall::munmap:return
 	this->cpu = vtimestamp - self->vstart;
 	self->vstart = 0;
 	self->code = errno == 0 ? "" : "Err#";
- 
+
 	/* print optional fields */
 	OPT_printid  ? printf("%6d/%d:  ", pid, tid) : 1;
 	OPT_relative ? printf("%8d ", vtimestamp/1000) : 1;
 	OPT_elapsed  ? printf("%7d ", this->elapsed/1000) : 1;
 	OPT_cpu      ? printf("%6d ", this->cpu/1000) : 1;
- 
+
 	/* print main data */
 	printf("%s(0x%X, 0x%X)\t\t = %d %s%d\n", probefunc, self->arg0,
 	    self->arg1, (int)arg0, self->code, (int)errno);
@@ -412,6 +531,7 @@ syscall::munmap:return
 	self->arg0 = 0;
 	self->arg1 = 0;
 	self->arg2 = 0;
+	self->arg3 = 0;
 }
 
 /* print 3 arg output - default */
@@ -424,13 +544,13 @@ syscall:::return
 	this->cpu = vtimestamp - self->vstart;
 	self->vstart = 0;
 	self->code = errno == 0 ? "" : "Err#";
- 
+
 	/* print optional fields */
 	OPT_printid  ? printf("%6d/%d:  ", pid, tid) : 1;
 	OPT_relative ? printf("%8d ", vtimestamp/1000) : 1;
 	OPT_elapsed  ? printf("%7d ", this->elapsed/1000) : 1;
 	OPT_cpu      ? printf("%6d ", this->cpu/1000) : 1;
- 
+
 	/* print main data */
 	printf("%s(0x%X, 0x%X, 0x%X)\t\t = %d %s%d\n", probefunc, self->arg0,
 	    self->arg1, self->arg2, (int)arg0, self->code, (int)errno);
@@ -439,6 +559,7 @@ syscall:::return
 	self->arg0 = 0;
 	self->arg1 = 0;
 	self->arg2 = 0;
+	self->arg3 = 0;
 }
 
 /* program exited */

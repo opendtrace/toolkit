@@ -7,12 +7,9 @@ DTrace One Liners,
 # New processes with arguments,
 dtrace -n 'proc:::exec-success { trace(curpsinfo->pr_psargs); }'
  
-# Files opened by process name,
-dtrace -n 'syscall::open*:entry { printf("%s %s",execname,copyinstr(arg0)); }'
+# Files opened/created by process name,
+dtrace -n 'syscall::openat*:entry { printf("%s %s",execname,copyinstr(arg1)); }'
 
-# Files created using creat() by process name,
-dtrace -n 'syscall::creat*:entry { printf("%s %s",execname,copyinstr(arg0)); }'
- 
 # Syscall count by process name,
 dtrace -n 'syscall:::entry { @num[execname] = count(); }'
  
@@ -72,7 +69,7 @@ dtrace -wn 'syscall::exece:return /execname == "top"/ { raise(9); }'
 DTrace Longer One Liners,
 
 # New processes with arguments and time,
-dtrace -qn 'syscall::exec*:return { printf("%Y %s\n",walltimestamp,curpsinfo->pr_psargs); }'
+dtrace -qn 'syscall::exece:return { printf("%Y %s\n",walltimestamp,curpsinfo->pr_psargs); }'
  
 # Successful signal details,
 dtrace -n 'proc:::signal-send /pid/ { printf("%s -%d %d",execname,args[2],args[1]->pr_pid); }'

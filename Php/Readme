@@ -7,7 +7,7 @@ Php - DTracing PHP
    for download both as source and in binary form. The easiest instructions
    are currently at,
 
-	http://blogs.sun.com/shanti/entry/dtrace_support_for_php
+	http://blogs.oracle.com/shanti/entry/dtrace_support_for_php
 
    which were written for Solaris and the coolstack distribution of PHP.
    The steps are roughly,

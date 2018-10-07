@@ -20,7 +20,7 @@
 #
 # BASED ON: /usr/demo/dtrace/applicat.d
 #
-# SEE ALSO: DTrace Guide "io Provider" chapter (docs.sun.com)
+# SEE ALSO: DTrace Guide "io Provider" chapter (docs.oracle.com)
 #           iosnoop (DTraceToolkit)
 #
 # PORTIONS: Copyright (c) 2005, 2006 Brendan Gregg.

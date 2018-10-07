@@ -8,7 +8,7 @@ Perl - DTracing Perl
    with Richard's patch to perl, which can be found in the comments on
    Alan's original blog entry,
 
-	http://blogs.sun.com/alanbur/entry/dtrace_and_perl
+	http://blogs.oracle.com/alanbur/entry/dtrace_and_perl
    
    To get this and these scripts working, the rough steps are,
 

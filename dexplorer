@@ -25,6 +25,8 @@
 #
 # THANKS: David Visser, et all. for the idea and encouragement.
 #
+# Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
+#
 # COPYRIGHT: Copyright (c) 2005 Brendan Gregg.
 #
 # CDDL HEADER START
@@ -65,7 +67,7 @@ delete=1				# delete output dirs
 dtrace=/usr/sbin/dtrace			# path to dtrace
 root=.					# default output dir
 PATH=/usr/bin:/usr/sbin			# safe path
-dir=de_`uname -n`_`date +%Y%m%d%H%M`	# OUTPUT FILENAME
+dir=de_`uname -n`_`date +%Y_%m%d%H_%M`	# OUTPUT FILENAME
 samples=20				# max number of tests
 current=0				# current sample
 
@@ -307,12 +309,12 @@ $dtrace -qn "$header"'
 
 dstatus "Files opened successfully count..."
 $dtrace -qn "$header"'
-	syscall::open*:entry { self->file = copyinstr(arg0); self->ok = 1; }
-	syscall::open*:return /self->ok && arg0 != -1/ 
+	syscall::openat*:entry { self->file = copyinstr(arg1); self->ok = 1; }
+	syscall::openat*:return /self->ok && arg0 != -1/ 
 	{ 
 		@num[self->file] = count();
 	}
-	syscall::open*:return /self->ok/ { self->file = 0; self->ok = 0; }
+	syscall::openat*:return /self->ok/ { self->file = 0; self->ok = 0; }
 	dtrace:::END
 	{ 
 		printf("%-64s %8s\n", "FILE", "COUNT");
