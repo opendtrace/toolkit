@@ -47,7 +47,7 @@ dtrace:::BEGIN
 syscall::kill:entry
 {
 	/* Record target PID and signal */
-	self->target = arg0;
+	self->target = (pid_t)arg0;
 	self->signal = arg1;
 }
 
